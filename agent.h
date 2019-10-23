@@ -205,7 +205,7 @@ private:
  */
 class player : public weight_agent {
 public:
-	player(const std::string& args = "") : random_agent("name=dummy role=player " + args),
+	player(const std::string& args = "") : weight_agent("name=dummy role=player " + args),
 		opcode({ 0, 1, 2, 3 }) {
 			for(int i=0; i<tuple_num; i++){
 				net.emplace_back(tile_per_tuple);
@@ -213,19 +213,29 @@ public:
 		}
 
 	virtual action take_action(const board& before) {
-		std::shuffle(opcode.begin(), opcode.end(), engine);
 		int best_op =0;
-		int temp = -1;
-		for (int op : opcode) {
-			board::reward reward = board(before).slide(op);
-			if(reward>temp){
-				temp = reward;
-				best_op = op;
-			}
-		}
+		board t = before;
+		int next_op = select_op(t);
 		act = best_op;
 		return action::slide(best_op);
 		return action();
+	}
+	public:
+		short select_op(const board& before){
+		float max_value = -2147483648;
+		board temp;
+		short best_op = -1;
+		for (int op = 0; op < 4; op ++) {
+			temp = before;
+			int reward = temp.slide(op);
+			if(reward!=-1){
+				if(reward + board_value(temp) > max_value){
+					best_op = op;
+					max_value = reward + board_value(temp);
+				}
+			}
+		}
+		return best_op;
 	}
 private:
 	std::array<int, 4> opcode;
