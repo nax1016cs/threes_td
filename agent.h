@@ -3,11 +3,13 @@
 #include <random>
 #include <sstream>
 #include <map>
-#include <set>
 #include <type_traits>
 #include <algorithm>
 #include "board.h"
 #include "action.h"
+#include "weight.h"
+#include <fstream>
+
 
 int act =0;
 class agent {
@@ -25,6 +27,7 @@ public:
 	virtual void close_episode(const std::string& flag = "") {}
 	virtual action take_action(const board& b) { return action(); }
 	virtual bool check_for_win(const board& b) { return false; }
+
 public:
 	virtual std::string property(const std::string& key) const { return meta.at(key); }
 	virtual void notify(const std::string& msg) { meta[msg.substr(0, msg.find('='))] = { msg.substr(msg.find('=') + 1) }; }
@@ -40,7 +43,6 @@ protected:
 		operator numeric() const { return numeric(std::stod(value)); }
 	};
 	std::map<key, value> meta;
-
 };
 
 class random_agent : public agent {
@@ -53,6 +55,65 @@ public:
 
 protected:
 	std::default_random_engine engine;
+};
+
+/**
+ * base agent for agents with weight tables
+ */
+class weight_agent : public agent {
+public:
+	weight_agent(const std::string& args = "") : agent(args) {
+		if (meta.find("init") != meta.end()) // pass init=... to initialize the weight
+			init_weights(meta["init"]);
+		if (meta.find("load") != meta.end()) // pass load=... to load from a specific file
+			load_weights(meta["load"]);
+	}
+	virtual ~weight_agent() {
+		if (meta.find("save") != meta.end()) // pass save=... to save to a specific file
+			save_weights(meta["save"]);
+	}
+
+protected:
+	virtual void init_weights(const std::string& info) {
+		net.emplace_back(65536); // create an empty weight table with size 65536
+		net.emplace_back(65536); // create an empty weight table with size 65536
+		// now net.size() == 2; net[0].size() == 65536; net[1].size() == 65536
+	}
+	virtual void load_weights(const std::string& path) {
+		std::ifstream in(path, std::ios::in | std::ios::binary);
+		if (!in.is_open()) std::exit(-1);
+		uint32_t size;
+		in.read(reinterpret_cast<char*>(&size), sizeof(size));
+		net.resize(size);
+		for (weight& w : net) in >> w;
+		in.close();
+	}
+	virtual void save_weights(const std::string& path) {
+		std::ofstream out(path, std::ios::out | std::ios::binary | std::ios::trunc);
+		if (!out.is_open()) std::exit(-1);
+		uint32_t size = net.size();
+		out.write(reinterpret_cast<char*>(&size), sizeof(size));
+		for (weight& w : net) out << w;
+		out.close();
+	}
+
+protected:
+	std::vector<weight> net;
+};
+
+/**
+ * base agent for agents with a learning rate
+ */
+class learning_agent : public agent {
+public:
+	learning_agent(const std::string& args = "") : agent(args), alpha(0.1f) {
+		if (meta.find("alpha") != meta.end())
+			alpha = float(meta["alpha"]);
+	}
+	virtual ~learning_agent() {}
+
+protected:
+	float alpha;
 };
 
 /**
@@ -119,6 +180,7 @@ private:
 
 		{{3,7,11,15}}
 	}};
+
 };
 
 /**
@@ -145,7 +207,6 @@ public:
 		return action::slide(best_op);
 		return action();
 	}
-
 private:
 	std::array<int, 4> opcode;
 };
