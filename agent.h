@@ -10,8 +10,18 @@
 #include "weight.h"
 #include <fstream>
 
-
+const int tuple_num = 8;
+const long long tile_per_tuple = 85536;
 int act =0;
+const std::array<std::array<int, 6> ,tuple_num> tuple_feature = {{
+		{{0,4,8,12,13,9}},
+
+		{{1,5,9,13,14,10}},
+		
+		{{1,2,5,6,9,10}},
+
+		{{2,3,6,7,10,11}}
+	}};
 class agent {
 public:
 	agent(const std::string& args = "") {
@@ -75,6 +85,12 @@ public:
 
 protected:
 	virtual void init_weights(const std::string& info) {
+		net.emplace_back(65536); // create an empty weight table with size 65536
+		net.emplace_back(65536); // create an empty weight table with size 65536
+		net.emplace_back(65536); // create an empty weight table with size 65536
+		net.emplace_back(65536); // create an empty weight table with size 65536
+		net.emplace_back(65536); // create an empty weight table with size 65536
+		net.emplace_back(65536); // create an empty weight table with size 65536
 		net.emplace_back(65536); // create an empty weight table with size 65536
 		net.emplace_back(65536); // create an empty weight table with size 65536
 		// now net.size() == 2; net[0].size() == 65536; net[1].size() == 65536
@@ -187,10 +203,14 @@ private:
  * dummy player
  * select a legal action randomly
  */
-class player : public random_agent {
+class player : public weight_agent {
 public:
 	player(const std::string& args = "") : random_agent("name=dummy role=player " + args),
-		opcode({ 0, 1, 2, 3 }) {}
+		opcode({ 0, 1, 2, 3 }) {
+			for(int i=0; i<tuple_num; i++){
+				net.emplace_back(tile_per_tuple);
+			}
+		}
 
 	virtual action take_action(const board& before) {
 		std::shuffle(opcode.begin(), opcode.end(), engine);
