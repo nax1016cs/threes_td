@@ -13,14 +13,23 @@
 const int tuple_num = 4;
 const long long tile_per_tuple = 15*15*15*15*15*15;
 int act =0;
-const std::array<std::array<int, 6> ,tuple_num> tuple_feature = {{
-		{{0,4,8,12,13,9}},
+// const std::array<std::array<int, 6> ,tuple_num> tuple_feature = {{
+// 		{{0,4,8,12,13,9}},
 
-		{{1,5,9,13,14,10}},
+// 		{{1,5,9,13,14,10}},
 		
-		{{1,2,5,6,9,10}},
+// 		{{1,2,5,6,9,10}},
 
-		{{2,3,6,7,10,11}}
+// 		{{2,3,6,7,10,11}}
+// 	}};
+const std::array<std::array<int, 6> ,tuple_num> tuple_feature = {{
+		{{0,4,8,1,5,9}},
+
+		{{1,5,9,2,6,10}},
+		
+		{{2,6,10,12,13,14,}},
+
+		{{3,7,11,13,14,15}}
 	}};
 const int rt[16] = {3,7,11,15,2,6,10,14,1,5,9,13,0,4,8,12};
 const int rf[16] = {3,2,1,0,7,6,5,4,11,10,9,8,15,14,13,12};
@@ -322,4 +331,6 @@ private:
 	std::array<std::array<int, 6> ,tuple_num> t_tuple_feature ;
 	short int count = 0;
 	board previous, next;	
+	long long int abs_td = 0;
+	long long int td = 0;
 };
