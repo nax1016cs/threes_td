@@ -10,42 +10,27 @@
 #include "weight.h"
 #include <fstream>
 
-const int num_per_tuple = 16;
 const int tuple_num = 4;
 const long long tile_per_tuple = 16*16*16*16*16*16*16;
-
 int act =0;
-// const std::array<std::array<int, num_per_tuple> ,tuple_num> tuple_feature = {{
-// 		{{0,4,8,1,5,9}},
+// const std::array<std::array<int, 6> ,tuple_num> tuple_feature = {{
+// 		{{0,4,8,12,13,9}},
 
-// 		{{1,5,9,2,6,10}},
+// 		{{1,5,9,13,14,10}},
 		
-// 		{{2,6,10,14,13,12}},
+// 		{{1,2,5,6,9,10}},
 
-// 		{{3,7,11,15,14,13}}
+// 		{{2,3,6,7,10,11}}
 // 	}};
-const std::array<std::array<int, num_per_tuple> ,tuple_num> tuple_feature = {{
-  	{{1, 4, 0, 0,
-  	 2, 5, 0, 0,
-  	 3, 6, 0, 0,
-  	 0, 0, 0, 0}},
+const std::array<std::array<int, 6> ,tuple_num> tuple_feature = {{
+		{{0,4,8,1,5,9}},
 
-  	{{0, 1, 4, 0,
-  	 0, 2, 5, 0,
-  	 0, 3, 6, 0,
-  	 0, 0, 0, 0}},
-  	
-  	{{0, 0, 1, 0,
-  	 0, 0, 2, 0,
-  	 0, 0, 3, 0,
-  	 0, 0, 4, 0}},
+		{{1,5,9,2,6,10}},
+		
+		{{2,6,10,12,13,14,}},
 
-  	{{0, 0, 0, 1,
-  	 0, 0, 0, 2,
-  	 0, 0, 0, 3,
-  	 0, 0, 0, 4}}
-
-}};
+		{{3,7,11,13,14,15}}
+	}};
 const int rt[16] = {3,7,11,15,2,6,10,14,1,5,9,13,0,4,8,12};
 const int rf[16] = {3,2,1,0,7,6,5,4,11,10,9,8,15,14,13,12};
 //the location index of the n-tuple
@@ -113,10 +98,10 @@ public:
 
 protected:
 	virtual void init_weights(const std::string& info) {
-		net.emplace_back(66536); // create an empty weight table with size 65536
-		net.emplace_back(66536); // create an empty weight table with size 65536
-		// net.emplace_back(66536);
-		// net.emplace_back(66536);
+		net.emplace_back(65536); // create an empty weight table with size 65536
+		net.emplace_back(65536); // create an empty weight table with size 65536
+		net.emplace_back(65536);
+		net.emplace_back(65536);
 		// now net.size() == 2; net[0].size() == 65536; net[1].size() == 65536
 	}
 	virtual void load_weights(const std::string& path) {
@@ -164,7 +149,7 @@ protected:
  */
 class rndenv : public random_agent {
 public:
-	virtual void close_episode(const std::string& flag = "") {ct=0;choose =3;act=0;};
+	virtual void close_episode(const std::string& flag = "") {ct=0;choose =3;};
 	rndenv(const std::string& args = "") : random_agent("name=random role=environment " + args),
 		space({ 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15 }),ct(0),bag({1,2,3}), popup(0, 9) {}
 	virtual action take_action(const board& after) {
@@ -232,7 +217,7 @@ public:
 	player(const std::string& args = "") : weight_agent("name=dummy role=player " + args),
 		opcode({ 0, 1, 2, 3 }) {
 			for(int i=0; i<tuple_num; i++){
-				net.emplace_back(weight(tile_per_tuple));
+				net.emplace_back(tile_per_tuple);
 			}
 		}
 	virtual void open_episode(const std::string& flag = "" ) {
@@ -278,7 +263,7 @@ public:
 			temp = before;
 			int reward = temp.slide(op);
 			if(reward!=-1){
-				if(reward + board_value(temp) > max_value){
+				if(reward + board_value(temp) >= max_value){
 					best_op = op;
 					max_value = reward + board_value(temp);
 				}
@@ -289,130 +274,81 @@ public:
 	}
 	double board_value(const board& b){
 		double value = 0;
-		for(int i=0; i<tuple_num; i++){
-			for(int l=0; l<4; l++){
-				rotate();	
-				for(int m=0; m<2; m++){
-					value += net[i][caculate_tuple_value(b,i)];
-					reflection();	
-				}
+		for(int i=0; i<4; i++){
+			rotate_right();	
+			for(int m=0; m<2; m++){
+				value += net[0][caculate_tuple_value(b,0)];
+				value += net[1][caculate_tuple_value(b,1)];
+				value += net[2][caculate_tuple_value(b,2)];
+				value += net[3][caculate_tuple_value(b,3)];
+				reflection();	
 			}
 		}
 		return value;
 	}
-	/////
-	unsigned long long int caculate_tuple_value(const board& b, int index_of_tuple){
+	unsigned int caculate_tuple_value(const board& b, int index_of_tuple){
 		unsigned long long int tuple_value = 0;
-		for(int j=0; j<num_per_tuple; j++){
-			if(t_tuple_feature[index_of_tuple][j]==0){
-				continue;
-			}
-			tuple_value |= (t_tuple_feature[index_of_tuple][j]<<4)*t_tuple_feature[index_of_tuple][j];
+		int order = 1;
+		for(int j=0; j<6; j++){
+			tuple_value += order * b[t_tuple_feature[index_of_tuple][j]/4][t_tuple_feature[index_of_tuple][j]%4];
+			order = order <<4;
 		}
+
 		return tuple_value;
 	}
 	void train_weight(const board& previous, const board& next, int reward, int last){
 		double delta = board_value(next) - board_value(previous) + reward ;
 		td += delta ;
 		abs_td += abs(delta);	
-		double rate = (abs_td==0) ? 0.1 : td*1.0/abs_td *0.1 ;
+		double rate = (abs_td==0) ? 0.1 : td*1.0/abs_td *0.01;
 		rate = (rate>0) ? rate : rate * (-1);
 		double v_s = last ? 0 : rate * delta;
-		for(int i=0; i<tuple_num; i++){
-			for(int l=0; l<4; l++){
-				rotate();
-				for(int m=0; m<4; m++){
-					net[i][caculate_tuple_value(previous,i)]+= v_s;	
-					reflection();
-				}
+		for(int i=0; i<4; i++){
+			rotate_right();
+			for(int m=0; m<2; m++){
+				net[0][caculate_tuple_value(previous,0)]+= v_s;	
+				net[1][caculate_tuple_value(previous,1)]+= v_s;	
+				net[2][caculate_tuple_value(previous,2)]+= v_s;	
+				net[3][caculate_tuple_value(previous,3)]+= v_s;	
+				reflection();
 			}
 		}
+
 	}
 	void reflection(){
-		for(int j=0; j<4; j++){
-			for (int i = 0; i < 4 ; i++) {
-		  		std::swap(t_tuple_feature[j][ (i<<2)    ], t_tuple_feature[j][ (i<<2) + 3]);
-		  		std::swap(t_tuple_feature[j][ (i<<2) + 1], t_tuple_feature[j][ (i<<2) + 2]);
-		  	}
-		}
-	}
-	void transpose(){
+
 		for(int i=0; i<4; i++){
-			for (int r = 0; r < 4; r++) {
-				for (int c = r + 1; c < 4; c++) {
-					std::swap(t_tuple_feature[i][(r<<2)+c], t_tuple_feature[i][(c<<2)+r]);
-				}
+			for(int j=0; j<6; j++){
+				t_tuple_feature[i][j] = rf[t_tuple_feature[i][j]];
 			}
 		}
+		// std::cout<<"reflect: \n";
+		// for(int i=0; i<4; i++){
+		// 	for(int j=0; j<6; j++){
+		// 		std::cout<<t_tuple_feature[i][j] <<" ";
+		// 	}
+		// 	std::cout<<'\n';
+		// }
 	}
-	void rotate(){
-		 transpose(); reflection();
+	void rotate_right(){
+		for(int i=0; i<4; i++){
+			for(int j=0; j<6; j++){
+				t_tuple_feature[i][j] = rt[t_tuple_feature[i][j]];
+			}
+		}
+		// std::cout<<"rotate: \n";
+		// for(int i=0; i<4; i++){
+		// 	for(int j=0; j<6; j++){
+		// 		std::cout<<t_tuple_feature[i][j] <<" ";
+		// 	}
+		// 	std::cout<<'\n';
+		// }
 	}
 private:
 	std::array<int, 4> opcode;
-	std::array<std::array<int, num_per_tuple> ,tuple_num> t_tuple_feature ;
+	std::array<std::array<int, 6> ,tuple_num> t_tuple_feature ;
 	short int count = 0;
 	board previous, next;	
 	long long int abs_td = 0;
 	long long int td = 0;
 };
-
-// void reflect_horizontal(std::array<int, 16> &arr) {
-  	
-//   	for (int i = 0; i < 4 ; i++) {
-//   		std::swap(arr[ (i<<2)    ], arr[ (i<<2) + 3]);
-//   		std::swap(arr[ (i<<2) + 1], arr[ (i<<2) + 2]);
-//   	}
-//   }
-//   void transpose(std::array<int, 16> &arr) {
-//   	for (int i = 0; i < 4; i++) 
-//   		for (int j = i + 1; j < 4 ; j++) {
-//   			std::swap(arr[ (i<<2) + j], arr[ (j<<2) + i]);
-//   		}
-//   }
-//   void rotate(std::array<int, 16> &arr) {
-//   	transpose(arr); reflect_horizontal(arr);
-//   }	
-
-
-// long get_tuple_value(const board &b, std::array<int, boardsize> arr) {
-//   	long result = 0;
-//   	int c = 15;
-//   	std::array<int, 6> pos = {-1, -1, -1, -1, -1, -1};
-//   	for(unsigned int i = 0; i < arr.size(); i++) {
-//   		if ( arr[i] == 0 ) continue;
-//   		pos[arr[i]-1] = i;
-//   	}
-//   	for ( size_t i = 0; i < arr.size(); i++ ) {
-//   		result *= c;
-//   		int tile = *(&b[0][0] + pos[i]);
-//   		result += tile;
-//   	}
-//   	return result;
-//   }
-
-// static const int TUPLE_NUM = 4;
-// static const int boardsize = 16;
-
-// std::array<std::array<int, boardsize> ,TUPLE_NUM> n_tuple = {{
-//   	{{1, 4, 0, 0,
-//   	 2, 5, 0, 0,
-//   	 3, 6, 0, 0,
-//   	 0, 0, 0, 0}},
-
-//   	{{0, 1, 4, 0,
-//   	 0, 2, 5, 0,
-//   	 0, 3, 6, 0,
-//   	 0, 0, 0, 0}},
-  	
-//   	{{0, 0, 1, 0,
-//   	 0, 0, 2, 0,
-//   	 0, 0, 3, 0,
-//   	 0, 0, 4, 0}},
-
-//   	{{0, 0, 0, 1,
-//   	 0, 0, 0, 2,
-//   	 0, 0, 0, 3,
-//   	 0, 0, 0, 4}}
-//   }};
-//   
