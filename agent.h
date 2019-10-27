@@ -10,42 +10,42 @@
 #include "weight.h"
 #include <fstream>
 
-const int num_per_tuple = 6;
+const int num_per_tuple = 16;
 const int tuple_num = 4;
 const long long tile_per_tuple = 16*16*16*16*16*16*16;
 
 int act =0;
-const std::array<std::array<int, num_per_tuple> ,tuple_num> tuple_feature = {{
-		{{0,4,8,1,5,9}},
-
-		{{1,5,9,2,6,10}},
-		
-		{{2,6,10,14,13,12}},
-
-		{{3,7,11,15,14,13}}
-	}};
 // const std::array<std::array<int, num_per_tuple> ,tuple_num> tuple_feature = {{
-//   	{{1, 4, 0, 0,
-//   	 2, 5, 0, 0,
-//   	 3, 6, 0, 0,
-//   	 0, 0, 0, 0}},
+// 		{{0,4,8,1,5,9}},
 
-//   	{{0, 1, 4, 0,
-//   	 0, 2, 5, 0,
-//   	 0, 3, 6, 0,
-//   	 0, 0, 0, 0}},
+// 		{{1,5,9,2,6,10}},
+		
+// 		{{2,6,10,14,13,12}},
+
+// 		{{3,7,11,15,14,13}}
+// 	}};
+const std::array<std::array<int, num_per_tuple> ,tuple_num> tuple_feature = {{
+  	{{1, 4, 0, 0,
+  	 2, 5, 0, 0,
+  	 3, 6, 0, 0,
+  	 0, 0, 0, 0}},
+
+  	{{0, 1, 4, 0,
+  	 0, 2, 5, 0,
+  	 0, 3, 6, 0,
+  	 0, 0, 0, 0}},
   	
-//   	{{0, 0, 1, 0,
-//   	 0, 0, 2, 0,
-//   	 0, 0, 3, 0,
-//   	 0, 0, 4, 0}},
+  	{{0, 0, 1, 0,
+  	 0, 0, 2, 0,
+  	 0, 0, 3, 0,
+  	 0, 0, 4, 0}},
 
-//   	{{0, 0, 0, 1,
-//   	 0, 0, 0, 2,
-//   	 0, 0, 0, 3,
-//   	 0, 0, 0, 4}}
+  	{{0, 0, 0, 1,
+  	 0, 0, 0, 2,
+  	 0, 0, 0, 3,
+  	 0, 0, 0, 4}}
 
-// }};
+}};
 const int rt[16] = {3,7,11,15,2,6,10,14,1,5,9,13,0,4,8,12};
 const int rf[16] = {3,2,1,0,7,6,5,4,11,10,9,8,15,14,13,12};
 //the location index of the n-tuple
@@ -289,44 +289,25 @@ public:
 	}
 	double board_value(const board& b){
 		double value = 0;
-		// std::cout<<"before reflection : \n";
-		// for(int i=0; i<tuple_num; i++){
-		// 	for(int j=0; j<num_per_tuple; j++){
-		// 		std::cout<<t_tuple_feature[i][j]<<" ";
-		// 	}
-		// 	std::cout<<'\n';
-		// }
-		// std::cout<<'\n';
-		// for(int i=0; i<tuple_num; i++){
-		// 	for(int l=0; l<4; l++){
-		// 		rotate_right();	
-		// 		for(int m=0; m<2; m++){
-		// 			value += net[i][caculate_tuple_value(b,i)];
-		// 			reflection();	
-		// 		}
-		// 	}
-		// }
-		// std::cout<<"after reflection: \n";
-		// for(int i=0; i<tuple_num; i++){
-		// 	for(int j=0; j<num_per_tuple; j++){
-		// 		std::cout<<t_tuple_feature[i][j]<<" ";
-		// 	}
-		// 	std::cout<<'\n';
-		// }
-		// std::cout<<'\n';
-		for(int i=0; i<4; i++){
-			value += net[i][caculate_tuple_value(b,i)];
+		for(int i=0; i<tuple_num; i++){
+			for(int l=0; l<4; l++){
+				rotate();	
+				for(int m=0; m<2; m++){
+					value += net[i][caculate_tuple_value(b,i)];
+					reflection();	
+				}
+			}
 		}
-		
 		return value;
 	}
-	unsigned int caculate_tuple_value(const board& b, int index_of_tuple){
-		unsigned int tuple_value = 0;
-		int order = 1;
+	/////
+	unsigned long long int caculate_tuple_value(const board& b, int index_of_tuple){
+		unsigned long long int tuple_value = 0;
 		for(int j=0; j<num_per_tuple; j++){
-			tuple_value |= order * b[t_tuple_feature[index_of_tuple][j]/4][t_tuple_feature[index_of_tuple][j]%4];
-			order = order <<4;
-
+			if(t_tuple_feature[index_of_tuple][j]==0){
+				continue;
+			}
+			tuple_value |= (t_tuple_feature[index_of_tuple][j]<<4)*t_tuple_feature[index_of_tuple][j];
 		}
 		return tuple_value;
 	}
@@ -337,24 +318,35 @@ public:
 		double rate = (abs_td==0) ? 0.1 : td*1.0/abs_td *0.1 ;
 		rate = (rate>0) ? rate : rate * (-1);
 		double v_s = last ? 0 : rate * delta;
-		for(int i=0; i<4; i++){
-			net[i][caculate_tuple_value(previous,i)]+= v_s;	
+		for(int i=0; i<tuple_num; i++){
+			for(int l=0; l<4; l++){
+				rotate();
+				for(int m=0; m<4; m++){
+					net[i][caculate_tuple_value(previous,i)]+= v_s;	
+					reflection();
+				}
+			}
 		}
 	}
 	void reflection(){
-		for(int i=0; i<tuple_num; i++){
-			for(int j=0; j<num_per_tuple; j++){
-				t_tuple_feature[i][j] = rf[t_tuple_feature[i][j]];
-			}
+		for(int j=0; j<4; j++){
+			for (int i = 0; i < 4 ; i++) {
+		  		std::swap(t_tuple_feature[j][ (i<<2)    ], t_tuple_feature[j][ (i<<2) + 3]);
+		  		std::swap(t_tuple_feature[j][ (i<<2) + 1], t_tuple_feature[j][ (i<<2) + 2]);
+		  	}
 		}
-		
 	}
-	void rotate_right(){
-		for(int i=0; i<tuple_num; i++){
-			for(int j=0; j<num_per_tuple; j++){
-				t_tuple_feature[i][j] = rt[t_tuple_feature[i][j]];
+	void transpose(){
+		for(int i=0; i<4; i++){
+			for (int r = 0; r < 4; r++) {
+				for (int c = r + 1; c < 4; c++) {
+					std::swap(t_tuple_feature[i][(r<<2)+c], t_tuple_feature[i][(c<<2)+r]);
+				}
 			}
 		}
+	}
+	void rotate(){
+		 transpose(); reflection();
 	}
 private:
 	std::array<int, 4> opcode;
