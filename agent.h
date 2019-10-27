@@ -27,7 +27,7 @@ const std::array<std::array<int, 6> ,tuple_num> tuple_feature = {{
 
 		{{1,5,9,2,6,10}},
 		
-		{{2,6,10,12,13,14,}},
+		{{2,6,10,12,13,14}},
 
 		{{3,7,11,13,14,15}}
 	}};
@@ -277,11 +277,11 @@ public:
 		for(int i=0; i<4; i++){
 			rotate_right();	
 			for(int m=0; m<2; m++){
+				reflection();	
 				value += net[0][caculate_tuple_value(b,0)];
 				value += net[1][caculate_tuple_value(b,1)];
 				value += net[2][caculate_tuple_value(b,2)];
 				value += net[3][caculate_tuple_value(b,3)];
-				reflection();	
 			}
 		}
 		return value;
@@ -291,7 +291,7 @@ public:
 		int order = 1;
 		for(int j=0; j<6; j++){
 			tuple_value += order * b[t_tuple_feature[index_of_tuple][j]/4][t_tuple_feature[index_of_tuple][j]%4];
-			order = order <<4;
+			order *=16;
 		}
 
 		return tuple_value;
@@ -300,17 +300,17 @@ public:
 		double delta = board_value(next) - board_value(previous) + reward ;
 		td += delta ;
 		abs_td += abs(delta);	
-		double rate = (abs_td==0) ? 0.1 : td*1.0/abs_td *0.01;
-		rate = (rate>0) ? rate : rate * (-1);
+		double rate = (abs_td==0) ? 0.1 : td*1.0/abs_td *0.1;
+		// std::cout<<rate<<'\n';
 		double v_s = last ? 0 : rate * delta;
 		for(int i=0; i<4; i++){
 			rotate_right();
 			for(int m=0; m<2; m++){
+				reflection();
 				net[0][caculate_tuple_value(previous,0)]+= v_s;	
 				net[1][caculate_tuple_value(previous,1)]+= v_s;	
 				net[2][caculate_tuple_value(previous,2)]+= v_s;	
 				net[3][caculate_tuple_value(previous,3)]+= v_s;	
-				reflection();
 			}
 		}
 
@@ -322,13 +322,7 @@ public:
 				t_tuple_feature[i][j] = rf[t_tuple_feature[i][j]];
 			}
 		}
-		// std::cout<<"reflect: \n";
-		// for(int i=0; i<4; i++){
-		// 	for(int j=0; j<6; j++){
-		// 		std::cout<<t_tuple_feature[i][j] <<" ";
-		// 	}
-		// 	std::cout<<'\n';
-		// }
+
 	}
 	void rotate_right(){
 		for(int i=0; i<4; i++){
@@ -336,13 +330,7 @@ public:
 				t_tuple_feature[i][j] = rt[t_tuple_feature[i][j]];
 			}
 		}
-		// std::cout<<"rotate: \n";
-		// for(int i=0; i<4; i++){
-		// 	for(int j=0; j<6; j++){
-		// 		std::cout<<t_tuple_feature[i][j] <<" ";
-		// 	}
-		// 	std::cout<<'\n';
-		// }
+
 	}
 private:
 	std::array<int, 4> opcode;
