@@ -85,6 +85,9 @@ public:
 				if( (tile_r == tile_l && (tile_r>=3) ) || (tile_r==1 && tile_l==2) || (tile_r==2 && tile_l==1)){
 					row[c] = std::max(tile_r,tile_l) +1 ;
 					row[c+1]=0;
+					if(score>=10){
+						score += tile_num[tile_r]*1.5 + tile_num[tile_l]*1.5;
+					}
 					score += tile_num[tile_r] + tile_num[tile_l];
 				}
 				else if(tile_l==0){

@@ -10,8 +10,9 @@
 #include "weight.h"
 #include <fstream>
 
-const int tuple_num = 4;
-const long long tile_per_tuple = 16*16*16*16*16*16*16;
+static const int num_per_tuple = 6;
+static const int tuple_num = 4;
+static const long long tile_per_tuple = 15*15*15*15*15*15*15;
 int act =0;
 // const std::array<std::array<int, 6> ,tuple_num> tuple_feature = {{
 // 		{{0,4,8,12,13,9}},
@@ -22,7 +23,7 @@ int act =0;
 
 // 		{{2,3,6,7,10,11}}
 // 	}};
-const std::array<std::array<int, 6> ,tuple_num> tuple_feature = {{
+const std::array<std::array<int, num_per_tuple> ,tuple_num> tuple_feature = {{
 		{{0,4,8,1,5,9}},
 
 		{{1,5,9,2,6,10}},
@@ -217,7 +218,7 @@ public:
 	player(const std::string& args = "") : weight_agent("name=dummy role=player " + args),
 		opcode({ 0, 1, 2, 3 }) {
 			for(int i=0; i<tuple_num; i++){
-				net.emplace_back(tile_per_tuple);
+				net.emplace_back(weight(tile_per_tuple));
 			}
 		}
 	virtual void open_episode(const std::string& flag = "" ) {
@@ -256,7 +257,7 @@ public:
 	}
 public:
 	short select_op(const board& before){
-	float max_value = -2147483648;
+	float max_value = -2147483648.1;
 	board temp;
 	short best_op = -1;
 		for (int op = 0; op < 4; op ++) {
@@ -288,10 +289,9 @@ public:
 	}
 	unsigned int caculate_tuple_value(const board& b, int index_of_tuple){
 		unsigned long long int tuple_value = 0;
-		int order = 1;
-		for(int j=0; j<6; j++){
-			tuple_value += order * b[t_tuple_feature[index_of_tuple][j]/4][t_tuple_feature[index_of_tuple][j]%4];
-			order *=16;
+		for(int j=0; j<num_per_tuple; j++){
+			tuple_value *= 15;
+			tuple_value +=  b[t_tuple_feature[index_of_tuple][j]/4][t_tuple_feature[index_of_tuple][j]%4];
 		}
 
 		return tuple_value;
@@ -300,8 +300,7 @@ public:
 		double delta = board_value(next) - board_value(previous) + reward ;
 		td += delta ;
 		abs_td += abs(delta);	
-		double rate = (abs_td==0) ? 0.1 : td*1.0/abs_td *0.1;
-		// std::cout<<rate<<'\n';
+		double rate = (abs_td==0) ? 0.1/32 : td*1.0/abs_td *0.05;
 		double v_s = last ? 0 : rate * delta;
 		for(int i=0; i<4; i++){
 			rotate_right();
@@ -316,17 +315,16 @@ public:
 
 	}
 	void reflection(){
-
-		for(int i=0; i<4; i++){
-			for(int j=0; j<6; j++){
+		for(int i=0; i<tuple_num; i++){
+			for(int j=0; j<num_per_tuple; j++){
 				t_tuple_feature[i][j] = rf[t_tuple_feature[i][j]];
 			}
 		}
 
 	}
 	void rotate_right(){
-		for(int i=0; i<4; i++){
-			for(int j=0; j<6; j++){
+		for(int i=0; i<tuple_num; i++){
+			for(int j=0; j<num_per_tuple; j++){
 				t_tuple_feature[i][j] = rt[t_tuple_feature[i][j]];
 			}
 		}
@@ -334,7 +332,7 @@ public:
 	}
 private:
 	std::array<int, 4> opcode;
-	std::array<std::array<int, 6> ,tuple_num> t_tuple_feature ;
+	std::array<std::array<int, num_per_tuple> ,tuple_num> t_tuple_feature ;
 	short int count = 0;
 	board previous, next;	
 	long long int abs_td = 0;
